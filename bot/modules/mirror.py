@@ -12,6 +12,7 @@ import shutil
 
 from telegram.ext import CommandHandler
 from telegram import InlineKeyboardMarkup
+from requests.exceptions import RequestException
 
 from bot import Interval, INDEX_URL, BUTTON_FOUR_NAME, BUTTON_FOUR_URL, BUTTON_FIVE_NAME, BUTTON_FIVE_URL, \
                 BUTTON_SIX_NAME, BUTTON_SIX_URL, BLOCK_MEGA_FOLDER, BLOCK_MEGA_LINKS, VIEW_LINK, aria2, \
@@ -89,11 +90,10 @@ class MirrorListener(listeners.MirrorListeners):
                         subprocess.run(["7z", f"-v{TG_SPLIT_SIZE}b", "a", "-mx=0", f"-p{pswd}", path, m_path])
                     else:
                         subprocess.run(["7z", "a", "-mx=0", f"-p{pswd}", path, m_path])
+                elif self.isLeech and int(size) > TG_SPLIT_SIZE:
+                    subprocess.run(["7z", f"-v{TG_SPLIT_SIZE}b", "a", "-mx=0", path, m_path])
                 else:
-                    if self.isLeech and int(size) > TG_SPLIT_SIZE:
-                        subprocess.run(["7z", f"-v{TG_SPLIT_SIZE}b", "a", "-mx=0", path, m_path])
-                    else:
-                        subprocess.run(["7z", "a", "-mx=0", path, m_path])
+                    subprocess.run(["7z", "a", "-mx=0", path, m_path])
             except FileNotFoundError:
                 LOGGER.info('File to archive not found!')
                 self.onUploadError('Internal error occurred!!')
@@ -414,7 +414,7 @@ def _mirror(bot, update, isZip=False, extract=False, isQbit=False, isLeech=False
             else:
                 sendMessage(f"ERROR: link got HTTP response: {resp.status_code}", bot, update)
                 return
-        except Exception as e:
+        except RequestException as e:
             LOGGER.error(str(e))
             return
     elif not os.path.exists(link) and not bot_utils.is_mega_link(link) and not bot_utils.is_gdrive_link(link) and not bot_utils.is_magnet(link):
@@ -423,10 +423,10 @@ def _mirror(bot, update, isZip=False, extract=False, isQbit=False, isLeech=False
         except DirectDownloadLinkException as e:
             LOGGER.info(e)
             if "ERROR:" in str(e):
-                sendMessage(f"{e}", bot, update)
+                sendMessage(str(e), bot, update)
                 return
             if "Youtube" in str(e):
-                sendMessage(f"{e}", bot, update)
+                sendMessage(str(e), bot, update)
                 return
 
     if bot_utils.is_gdrive_link(link):
